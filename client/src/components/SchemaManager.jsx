@@ -3,6 +3,54 @@ import React, { useState, useEffect } from "react";
 const API = "http://localhost:5000/api";
 
 function SchemaManager() {
+  // Default fields for a class
+  const defaultFields = [
+    { key: 'first_name', label: 'First Name', type: 'text' },
+    { key: 'last_name', label: 'Last Name', type: 'text' },
+    { key: 'english_30', label: 'English -30%', type: 'number' },
+    { key: 'english_70', label: 'English -70%', type: 'number' },
+    { key: 'english_100', label: 'English 100%', type: 'number' },
+    { key: 'maths_30', label: 'Maths -30%', type: 'number' },
+    { key: 'maths_70', label: 'Maths -70%', type: 'number' },
+    { key: 'maths_100', label: 'Maths 100%', type: 'number' },
+    { key: 'social_std_30', label: 'Social Std-30%', type: 'number' },
+    { key: 'social_std_70', label: 'Social Std-70%', type: 'number' },
+    { key: 'social_std_100', label: 'Social Std-100%', type: 'number' },
+  ];
+
+  // All state declarations at the very top
+  const [editRows, setEditRows] = useState([]);
+  const [selectedClass, setSelectedClass] = useState("");
+  const [schemas, setSchemas] = useState([]);
+  const [schemaName, setSchemaName] = useState("");
+  const [selectedSchema, setSelectedSchema] = useState("");
+  const [tables, setTables] = useState([]);
+  const [tableName, setTableName] = useState("");
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("success"); // 'success' or 'danger'
+
+  // Fetch rows for selected class
+  useEffect(() => {
+    if (selectedSchema && selectedClass) {
+      const safeSchema = selectedSchema.replace(/\//g, '_');
+      fetch(`${API}/schema/${safeSchema}/table/${selectedClass}/rows`)
+        .then(res => res.json())
+        .then(data => setEditRows(data.rows || []));
+    } else {
+      setEditRows([]);
+    }
+  }, [selectedSchema, selectedClass]);
+
+  // Handle cell edit
+  const handleCellChange = (rowIdx, field, value) => {
+    setEditRows(rows => rows.map((row, idx) => idx === rowIdx ? { ...row, [field]: value } : row));
+  };
+
+  // Save row edits (stub, backend endpoint needed)
+  const handleSaveRow = (row) => {
+    // TODO: Implement backend update endpoint
+    alert('Save not implemented.');
+  };
   // Modal state and fields for Add Class
   const [showModal, setShowModal] = useState(false);
   const [modalSuffix, setModalSuffix] = useState("1");
@@ -37,13 +85,6 @@ function SchemaManager() {
       })
       .catch(() => setModalMsg("Error creating class."));
   };
-  const [schemas, setSchemas] = useState([]);
-  const [schemaName, setSchemaName] = useState("");
-  const [selectedSchema, setSelectedSchema] = useState("");
-  const [tables, setTables] = useState([]);
-  const [tableName, setTableName] = useState("");
-  const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState("success"); // 'success' or 'danger'
   useEffect(() => {
     if (message) {
       const timer = setTimeout(() => {
@@ -59,13 +100,13 @@ function SchemaManager() {
     fetch(`${API}/schemas`)
       .then((res) => res.json())
       .then((data) => {
-        // Only include schemas that start with a year pattern like '2023/2024', '2024/2025', etc.
+  // Only include schemas that start with a year pattern like '2023/2024', '2024/2025', etc.
         const yearPattern = /^\d{4}-\d{4}$/;
 
         // Convert all schema names with '_' back to '/' for display
         const filtered = (data.schemas || [])
-          .filter(s => yearPattern.test(s.replace(/_/g, '/')))
-          .map(s => s.replace(/_/g, '/'));
+          .filter(s => yearPattern.test(s.replace(/_/g, '-')))
+          .map(s => s.replace(/_/g, '-'));
         setSchemas(filtered);
       });
   }, [message]);
@@ -90,10 +131,10 @@ function SchemaManager() {
     if (schemas.includes(schemaName)) {
       setMessage("Academic year already exists.");
       setMessageType("danger");
-      setSchemaName("");
+      setSchemaName("")
       return;
     }
-    // Convert '/' to '_' for MySQL
+    // Convert '/' to '-' for MySQL
     const safeSchema = schemaName.replace(/\//g, '-');
     fetch(`${API}/schema`, {
       method: "POST",
@@ -190,9 +231,61 @@ function SchemaManager() {
               <h2>Classes available in Academic Year {selectedSchema}</h2>
               <ul>
                 {tables.map((t) => (
-                  <li key={t}>{t}</li>
+                  <li key={t}>
+                    <button
+                      style={{background:'#eee',border:'none',padding:'4px 12px',borderRadius:4,cursor:'pointer'}}
+                      onClick={() => {
+                        // Convert schema and table names to MySQL format for backend
+                        const safeSchema = selectedSchema.replace(/[\/]/g, '-');
+                        const safeTable = t.replace(/[\/]/g, '-');
+                        const url = `${window.location.origin}/class?schema=${encodeURIComponent(safeSchema)}&table=${encodeURIComponent(safeTable)}`;
+                        window.open(url, '_blank');
+                      }}
+                    >
+                      {t}
+                    </button>
+                  </li>
                 ))}
               </ul>
+              {/* Show table for selected class */}
+              {selectedClass && (
+                <div style={{marginTop:24}}>
+                  <h3>Students in {selectedClass}</h3>
+                  <table style={{borderCollapse:'collapse',width:'100%'}}>
+                    <thead>
+                      <tr>
+                        {defaultFields.map(f => (
+                          <th key={f.key} style={{border:'1px solid #ccc',padding:'6px'}}>{f.label}</th>
+                        ))}
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {editRows.length === 0 ? (
+                        <tr><td colSpan={defaultFields.length+1} style={{textAlign:'center',color:'#888'}}>No students yet.</td></tr>
+                      ) : (
+                        editRows.map((row, idx) => (
+                          <tr key={row.id || idx}>
+                            {defaultFields.map(f => (
+                              <td key={f.key} style={{border:'1px solid #ccc',padding:'6px'}}>
+                                <input
+                                  type={f.type}
+                                  value={row[f.key] || ""}
+                                  onChange={e => handleCellChange(idx, f.key, e.target.value)}
+                                  style={{width:f.type==='number'?'70px':'120px'}}
+                                />
+                              </td>
+                            ))}
+                            <td>
+                              <button onClick={()=>handleSaveRow(row)} style={{background:'#007bff',color:'#fff',border:'none',borderRadius:4,padding:'4px 10px',cursor:'pointer'}}>Save</button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
             <div style={{ flex: 1, marginLeft: 32 }}>
               <button
@@ -242,7 +335,7 @@ function SchemaManager() {
                       }
                       // Compose class name
                       const className = `${modalSuffix}-${modalType}-${modalEndSuffix}`;
-                      const safeSchema = selectedSchema.replace(/\//g, '_');
+                      const safeSchema = selectedSchema.replace(/\//g, '-');
                       try {
                         const res = await fetch(`${API}/schema/${safeSchema}/table`, {
                           method: "POST",

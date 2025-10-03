@@ -44,6 +44,7 @@ app.get('/api/schemas', (req, res) => {
 // List tables in a schema
 app.get('/api/schema/:schemaName/tables', (req, res) => {
   const { schemaName } = req.params;
+ 
   db.query(`SHOW TABLES FROM \`${schemaName}\``, (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     const tables = results.map((row) => Object.values(row)[0]);
@@ -55,8 +56,22 @@ app.get('/api/schema/:schemaName/tables', (req, res) => {
 app.post('/api/schema/:schemaName/table', (req, res) => {
   const { schemaName } = req.params;
   const { tableName } = req.body;
+  console.log('Creating table:', tableName, 'in schema:', schemaName);
   if (!tableName) return res.status(400).json({ error: 'Table name required' });
-  db.query(`CREATE TABLE \`${schemaName}\`.\`${tableName}\` (id INT PRIMARY KEY AUTO_INCREMENT)`, (err) => {
+  db.query(`CREATE TABLE \`${schemaName}\`.\`${tableName}\` (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    english_30 DECIMAL(5,2),
+    english_70 DECIMAL(5,2),
+    english_100 DECIMAL(5,2),
+    maths_30 DECIMAL(5,2),
+    maths_70 DECIMAL(5,2),
+    maths_100 DECIMAL(5,2),
+    social_std_30 DECIMAL(5,2),
+    social_std_70 DECIMAL(5,2),
+    social_std_100 DECIMAL(5,2)
+  )`, (err) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: 'Table created' });
   });
