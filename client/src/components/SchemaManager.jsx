@@ -32,8 +32,8 @@ function SchemaManager() {
   // Fetch rows for selected class
   useEffect(() => {
     if (selectedSchema && selectedClass) {
-      const safeSchema = selectedSchema.replace(/\//g, '_');
-      fetch(`${API}/schema/${safeSchema}/table/${selectedClass}/rows`)
+      // Use original schema and class names with dashes
+      fetch(`${API}/schema/${selectedSchema}/table/${selectedClass}/rows`)
         .then(res => res.json())
         .then(data => setEditRows(data.rows || []));
     } else {
@@ -69,8 +69,8 @@ function SchemaManager() {
     }
     // Compose class name
     const className = `${modalSuffix}-${modalType}-${modalEndSuffix}`;
-    const safeSchema = selectedSchema.replace(/\//g, '_');
-    fetch(`${API}/schema/${safeSchema}/table`, {
+    // Use original schema name with dashes
+    fetch(`${API}/schema/${selectedSchema}/table`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ tableName: className }),
@@ -100,13 +100,9 @@ function SchemaManager() {
     fetch(`${API}/schemas`)
       .then((res) => res.json())
       .then((data) => {
-  // Only include schemas that start with a year pattern like '2023/2024', '2024/2025', etc.
+        // Only include schemas that start with a year pattern like '2023-2024', '2024-2025', etc.
         const yearPattern = /^\d{4}-\d{4}$/;
-
-        // Convert all schema names with '_' back to '/' for display
-        const filtered = (data.schemas || [])
-          .filter(s => yearPattern.test(s.replace(/_/g, '-')))
-          .map(s => s.replace(/_/g, '-'));
+        const filtered = (data.schemas || []).filter(s => yearPattern.test(s));
         setSchemas(filtered);
       });
   }, [message]);
@@ -114,8 +110,8 @@ function SchemaManager() {
   // Fetch tables when schema selected
   useEffect(() => {
     if (selectedSchema) {
-      const safeSchema = selectedSchema.replace(/\//g, '-');
-      fetch(`${API}/schema/${safeSchema}/tables`)
+      // Use original schema name with dashes
+      fetch(`${API}/schema/${selectedSchema}/tables`)
         .then((res) => res.json())
         .then((data) => setTables(data.tables || []));
     } else {
@@ -134,12 +130,11 @@ function SchemaManager() {
       setSchemaName("")
       return;
     }
-    // Convert '/' to '-' for MySQL
-    const safeSchema = schemaName.replace(/\//g, '-');
+    // Use original schema name with dashes
     fetch(`${API}/schema`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ schemaName: safeSchema }),
+      body: JSON.stringify({ schemaName }),
     })
       .then((res) => res.json())
       .then((data) => {

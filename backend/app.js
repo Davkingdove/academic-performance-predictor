@@ -52,11 +52,12 @@ app.get('/api/schema/:schemaName/tables', (req, res) => {
   });
 });
 
+
 // Create a table in a schema
 app.post('/api/schema/:schemaName/table', (req, res) => {
   const { schemaName } = req.params;
   const { tableName } = req.body;
-  console.log('Creating table:', tableName, 'in schema:', schemaName);
+  //console.log('Creating table:', tableName, 'in schema:', schemaName);
   if (!tableName) return res.status(400).json({ error: 'Table name required' });
   db.query(`CREATE TABLE \`${schemaName}\`.\`${tableName}\` (
     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -75,6 +76,39 @@ app.post('/api/schema/:schemaName/table', (req, res) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: 'Table created' });
   });
+});
+
+// Get all rows in a table (class)
+app.get('/api/schema/:schemaName/table/:tableName/rows', (req, res) => {
+  const { schemaName, tableName } = req.params;
+  console.log(`Fetching rows from ${schemaName}.${tableName}`);
+  db.query(`SELECT * FROM \`${schemaName}\`.\`${tableName}\``, (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ rows: results });
+  });
+});
+
+// Add students in bulk
+app.post('/api/schema/:schemaName/table/:tableName/add-students', (req, res) => {
+  const { schemaName, tableName } = req.params;
+  const { count } = req.body;
+  if (!count || isNaN(count) || count < 1) return res.status(400).json({ error: 'Invalid count' });
+  const students = [];
+  for (let i = 1; i <= count; i++) {
+    students.push([
+      `firstname${i}`,
+      `lastname${i}`,
+      null, null, null, null, null, null, null, null, null
+    ]);
+  }
+  db.query(
+    `INSERT INTO \`${schemaName}\`.\`${tableName}\` (first_name, last_name, english_30, english_70, english_100, maths_30, maths_70, maths_100, social_std_30, social_std_70, social_std_100) VALUES ?`,
+    [students],
+    (err) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ message: `${count} students added` });
+    }
+  );
 });
 
 const PORT = 5000;
