@@ -29,6 +29,12 @@ function SchemaManager() {
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("success"); // 'success' or 'danger'
 
+  // New state for editing all
+  const [editAll, setEditAll] = useState(false);
+
+  // New state for tracking which row is being edited
+  const [editingRowIdx, setEditingRowIdx] = useState(null);
+
   // Fetch rows for selected class
   useEffect(() => {
     if (selectedSchema && selectedClass) {
@@ -46,20 +52,84 @@ function SchemaManager() {
     setEditRows(rows => rows.map((row, idx) => idx === rowIdx ? { ...row, [field]: value } : row));
   };
 
-  // Save row edits (stub, backend endpoint needed)
-  const handleSaveRow = (row) => {
-    // TODO: Implement backend update endpoint
-    alert('Save not implemented.');
+  // Save all rows
+  const handleSaveAll = async () => {
+    try {
+      const res = await fetch(`${API}/schema/${selectedSchema}/table/${selectedClass}/update-all`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rows: editRows }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage("All students updated successfully.");
+        setMessageType("success");
+        setEditAll(false);
+      } else {
+        setMessage(data.error || "Failed to update all students.");
+        setMessageType("danger");
+      }
+    } catch {
+      setMessage("Failed to update all students.");
+      setMessageType("danger");
+    }
   };
+
+  // Save single row
+  const handleSaveRow = async (row) => {
+    try {
+      const res = await fetch(`${API}/schema/${selectedSchema}/table/${selectedClass}/update-row`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ row }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage("Student updated successfully.");
+        setMessageType("success");
+        setEditingRowIdx(null);
+      } else {
+        setMessage(data.error || "Failed to update student.");
+        setMessageType("danger");
+      }
+    } catch {
+      setMessage("Failed to update student.");
+      setMessageType("danger");
+    }
+  };
+
+  // Delete single row
+  const handleDeleteRow = async (rowId) => {
+    try {
+      const res = await fetch(`${API}/schema/${selectedSchema}/table/${selectedClass}/delete-row`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: rowId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage("Student deleted successfully.");
+        setMessageType("success");
+        setEditRows(editRows.filter(r => r.id !== rowId));
+      } else {
+        setMessage(data.error || "Failed to delete student.");
+        setMessageType("danger");
+      }
+    } catch {
+      setMessage("Failed to delete student.");
+      setMessageType("danger");
+    }
+  };
+
   // Modal state and fields for Add Class
   const [showModal, setShowModal] = useState(false);
   const [modalSuffix, setModalSuffix] = useState("1");
   const [modalType, setModalType] = useState("Science");
-    const [modalEndSuffix, setModalEndSuffix] = useState("1");
+  const [modalEndSuffix, setModalEndSuffix] = useState("1");
   const [modalMsg, setModalMsg] = useState("");
   const classTypes = ["Science", "Bussiness", "General-Art", "Visual-Art", "Home-Economics", "Technical"];
   const suffixOptions = ["1", "2", "3", "4", "5"];
-    const endSuffixOptions = Array.from({length: 20}, (_, i) => String(1 + i));
+  const endSuffixOptions = Array.from({ length: 20 }, (_, i) => String(1 + i));
 
   const handleAddClass = (e) => {
     e.preventDefault();
@@ -168,6 +238,13 @@ function SchemaManager() {
       });
   };
 
+  // Add this function inside your SchemaManager component
+  const handleRegisterClick = (schema, table) => {
+    const registerTable = `${table}-register`;
+    const url = `${window.location.origin}/register?schema=${encodeURIComponent(schema)}&registerTable=${encodeURIComponent(registerTable)}`;
+    window.open(url, "_blank");
+  };
+
   return (
     <div style={{ maxWidth: 1000, position: 'relative', display: 'flex', flexDirection: 'row', gap: 0, background: '#fff', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
       {message && (
@@ -226,9 +303,9 @@ function SchemaManager() {
               <h2>Classes available in Academic Year {selectedSchema}</h2>
               <ul>
                 {tables.map((t) => (
-                  <li key={t}>
+                  <div key={t} style={{ marginBottom: 8 }}>
                     <button
-                      style={{background:'#eee',border:'none',padding:'4px 12px',borderRadius:4,cursor:'pointer'}}
+                      style={{ background: '#eee', border: 'none', padding: '4px 12px', borderRadius: 4, cursor: 'pointer' }}
                       onClick={() => {
                         // Convert schema and table names to MySQL format for backend
                         const safeSchema = selectedSchema.replace(/[\/]/g, '-');
@@ -237,42 +314,87 @@ function SchemaManager() {
                         window.open(url, '_blank');
                       }}
                     >
-                      {t}
+                      Open Class: {t}
                     </button>
-                  </li>
+                    {/* <button
+                      onClick={() => handleRegisterClick(selectedSchema, t)}
+                      style={{ marginLeft: 8 }}
+                    >
+                      Open Register
+                    </button> */}
+                  </div>
                 ))}
               </ul>
               {/* Show table for selected class */}
               {selectedClass && (
-                <div style={{marginTop:24}}>
+                <div style={{ marginTop: 24 }}>
                   <h3>Students in {selectedClass}</h3>
-                  <table style={{borderCollapse:'collapse',width:'100%'}}>
+                  <button
+                    style={{
+                      marginBottom: 12,
+                      background: editAll ? "#007700" : "#0077cc",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: 4,
+                      padding: "8px 18px",
+                      fontSize: "1rem",
+                      cursor: "pointer"
+                    }}
+                    onClick={() => {
+                      if (editAll) {
+                        handleSaveAll();
+                      } else {
+                        setEditAll(true);
+                      }
+                    }}
+                  >
+                    {editAll ? "Save All" : "Edit All"}
+                  </button>
+                  <table style={{ borderCollapse: 'collapse', width: '100%' }}>
                     <thead>
                       <tr>
                         {defaultFields.map(f => (
-                          <th key={f.key} style={{border:'1px solid #ccc',padding:'6px'}}>{f.label}</th>
+                          <th key={f.key} style={{ border: '1px solid #ccc', padding: '6px' }}>{f.label}</th>
                         ))}
                         <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {editRows.length === 0 ? (
-                        <tr><td colSpan={defaultFields.length+1} style={{textAlign:'center',color:'#888'}}>No students yet.</td></tr>
+                        <tr><td colSpan={defaultFields.length + 1} style={{ textAlign: 'center', color: '#888' }}>No students yet.</td></tr>
                       ) : (
                         editRows.map((row, idx) => (
                           <tr key={row.id || idx}>
                             {defaultFields.map(f => (
-                              <td key={f.key} style={{border:'1px solid #ccc',padding:'6px'}}>
-                                <input
-                                  type={f.type}
-                                  value={row[f.key] || ""}
-                                  onChange={e => handleCellChange(idx, f.key, e.target.value)}
-                                  style={{width:f.type==='number'?'70px':'120px'}}
-                                />
+                              <td key={f.key} style={{ border: '1px solid #ccc', padding: '6px' }}>
+                                {(editAll || editingRowIdx === idx) ? (
+                                  <input
+                                    type={f.type}
+                                    value={row[f.key] || ""}
+                                    onChange={e => handleCellChange(idx, f.key, e.target.value)}
+                                    style={{ width: f.type === 'number' ? '70px' : '120px' }}
+                                  />
+                                ) : (
+                                  row[f.key]
+                                )}
                               </td>
                             ))}
                             <td>
-                              <button onClick={()=>handleSaveRow(row)} style={{background:'#007bff',color:'#fff',border:'none',borderRadius:4,padding:'4px 10px',cursor:'pointer'}}>Save</button>
+                              {editingRowIdx === idx ? (
+                                <button
+                                  onClick={() => handleSaveRow(row)}
+                                  style={{ background: '#007bff', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', marginRight: 4 }}
+                                >Save</button>
+                              ) : (
+                                <button
+                                  onClick={() => setEditingRowIdx(idx)}
+                                  style={{ background: '#007bff', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', marginRight: 4 }}
+                                >Edit</button>
+                              )}
+                              <button
+                                onClick={() => handleDeleteRow(row.id)}
+                                style={{ background: '#bb2222', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 10px', cursor: 'pointer' }}
+                              >Delete</button>
                             </td>
                           </tr>
                         ))

@@ -1,8 +1,8 @@
-
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import SchemaManager from "./components/SchemaManager";
 import ClassDetails from "./components/ClassDetails";
+import RegisterTableView from "./components/RegisterTableView";
 
 function App() {
   return (
@@ -15,6 +15,7 @@ function App() {
           </div>
         } />
         <Route path="/class" element={<ClassDetails />} />
+        <Route path="/register" element={<RegisterTableView />} />
       </Routes>
     </BrowserRouter>
   );
